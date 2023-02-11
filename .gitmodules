@@ -1,0 +1,3 @@
+[submodule "NPB-CPP"]
+	path = NPB-CPP
+	url = https://github.com/JoaoNevesSoares/NPB-CPP
