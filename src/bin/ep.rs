@@ -1,6 +1,4 @@
 //NPB SET_PARAMS GLOBAL VARIABLES
-const CLASS: &str= "A";
-const M: u32 = 25;
 const COMPILETIME: &str = "19 Feb 2023";
 const NPBVERSION: &str = "4.1";
 const COMPILERVERSION: &str = "13.0.0";
@@ -14,8 +12,6 @@ const A: f64 = 1220703125.0;
 const S: f64 = 271828183.0;
 const NQ: u32 = 10;
 const NK_PLUS: usize = (2 * NK) + 1;
-const MM: u32 = M - MK;
-const NN: u32 = 1 << MM;
 
 //IMPORTS
 use common::randdp;
@@ -33,14 +29,14 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let CLASS: &str= &args[1];
     let M: u32 = match CLASS {
-        _=>24,
         "S"=>24,
         "W"=>25,
         "A"=>28,
         "B"=>30,
         "C"=>32,
         "D"=>36,
-        "E"=>40
+        "E"=>40,
+        _=>24
     };
     let MM: u32 = M - MK;
     let NN: u32 = 1 << MM;

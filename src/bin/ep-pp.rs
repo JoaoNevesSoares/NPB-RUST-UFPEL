@@ -31,14 +31,14 @@ fn main() {
     let CLASS: &str= &args[1];
     let NUM_THREADS: usize = args[2].parse::<usize>().unwrap();
     let M: u32 = match CLASS {
-        _=>24,
         "S"=>24,
         "W"=>25,
         "A"=>28,
         "B"=>30,
         "C"=>32,
         "D"=>36,
-        "E"=>40
+        "E"=>40,
+        _=>24
     };
     let MM: u32 = M - MK;
     let NN: u32 = 1 << MM;

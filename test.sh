@@ -1,9 +1,11 @@
 #! /bin/bash
 
+export RUSTFLAGS="-Awarnings"
+
 SAVE_PATH=./results
-KERNEL=ep-pp
+KERNEL=ep
 CLASS=S
-NUM_THREADS=8
+NUM_THREADS=1
 EXEC_COMMAND="cargo +nightly run --bin $KERNEL --release -- $CLASS $NUM_THREADS"
 
 $EXEC_COMMAND
