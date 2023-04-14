@@ -60,25 +60,25 @@ pub fn rust_print_results(
     println!(
         " Total threads   =             {:>12}",totalthreads);
     println!(" Iterations      =             {:>12}", niter);
-    println!(" Time in seconds =             {}", t);//:12.2
+    println!(" Time in seconds =              {}", t);//:12.2
     println!(" Mop/s total     =             {:12.2}", mops);
     println!(" Operation type  = {:>24}", optype);
     //if passed_verification < 0 {
     //println!(" Verification    =            NOT PERFORMED");
     //}
     if passed_verification {
-        println!(" Verification    =            SUCCESSFUL");
+        println!(" Verification    =               SUCCESSFUL");
     } else {
-        println!(" Verification    =            UNSUCCESSFUL");
+        println!(" Verification    =             UNSUCCESSFUL");
     }
     println!(
         " Version         =             {:>12}", npbversion);
     println!(
         " Compile date    =             {:>12}",compiletime);
     println!(
-        " Compiler ver    =             {:>12}", compilerversion);
-    println!(
-        " OpenMP version  =             {:>12}", libversion);
+        " Compiler ver    =     {:>20}", compilerversion);
+    //println!(
+    //    " OpenMP version  =             {:>12}", libversion);
     println!("\n Compile options:\n");
     println!("    RUSTC           = {}", rust);
     println!("    RUST_LINK       = {}", rust_link);

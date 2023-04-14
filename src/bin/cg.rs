@@ -1,132 +1,57 @@
 use std::env;
 use std::time::Instant;
+use chrono::{Local, DateTime};
 
 use common::rust_timers;
 use common::print_results;
-use randdp::randlc;
+use common::randdp;
 
-const T_INIT 0
-const T_BENCH 1
-const T_CONJ_GRAD 2
-const T_LAST 3
+const NPBVERSION: &str = "4.1.2";
+//const COMPILETIME: &str = ""; // date
+const COMPILERVERSION: &str = "rustc 1.70.0-nightly";
+const LIBVERSION: &str = "1";
+const CS1: &str = "";
+const CS2: &str = "";
+const CS3: &str = "";
+const CS4: &str = "";
+const CS5: &str = "";
+const CS6: &str = "";
+const CS7: &str = "";
 
-/* global variables */
-#if defined(DO_NOT_ALLOCATE_ARRAYS_WITH_DYNAMIC_MEMORY_AND_AS_SINGLE_DIMENSION)
-static int colidx[NZ];
-static int rowstr[NA+1];
-static int iv[NA];
-static int arow[NA];
-static int acol[NAZ];
-static double aelt[NAZ];
-static double a[NZ];
-static double x[NA+2];
-static double z[NA+2];
-static double p[NA+2];
-static double q[NA+2];
-static double r[NA+2];
-#else
-static int (*colidx)=(int*)malloc(sizeof(int)*(NZ));
-static int (*rowstr)=(int*)malloc(sizeof(int)*(NA+1));
-static int (*iv)=(int*)malloc(sizeof(int)*(NA));
-static int (*arow)=(int*)malloc(sizeof(int)*(NA));
-static int (*acol)=(int*)malloc(sizeof(int)*(NAZ));
-static double (*aelt)=(double*)malloc(sizeof(double)*(NAZ));
-static double (*a)=(double*)malloc(sizeof(double)*(NZ));
-static double (*x)=(double*)malloc(sizeof(double)*(NA+2));
-static double (*z)=(double*)malloc(sizeof(double)*(NA+2));
-static double (*p)=(double*)malloc(sizeof(double)*(NA+2));
-static double (*q)=(double*)malloc(sizeof(double)*(NA+2));
-static double (*r)=(double*)malloc(sizeof(double)*(NA+2));
-#endif
-static int naa;
-static int nzz;
-static int firstrow;
-static int lastrow;
-static int firstcol;
-static int lastcol;
-static double amult;
-static double tran;
-static boolean timeron;
-
-/* function prototypes */
-static void conj_grad(int colidx[],
-		int rowstr[],
-		double x[],
-		double z[],
-		double a[],
-		double p[],
-		double q[],
-		double r[],
-		double* rnorm);
-static int icnvrt(double x,
-		int ipwr2);
-static void makea(int n,
-		int nz,
-		double a[],
-		int colidx[],
-		int rowstr[],
-		int firstrow,
-		int lastrow,
-		int firstcol,
-		int lastcol,
-		int arow[],
-		int acol[][NONZER+1],
-		double aelt[][NONZER+1],
-		int iv[]);
-static void sparse(double a[],
-		int colidx[],
-		int rowstr[],
-		int n,
-		int nz,
-		int nozer,
-		int arow[],
-		int acol[][NONZER+1],
-		double aelt[][NONZER+1],
-		int firstrow,
-		int lastrow,
-		int nzloc[],
-		double rcond,
-		double shift);
-static void sprnvc(int n,
-		int nz,
-		int nn1,
-		double v[],
-		int iv[]);
-static void vecset(int n,
-		double v[],
-		int iv[],
-		int* nzv,
-		int i,
-		double val);
+const RCOND: f64 = 0.1;
 
 fn main() {
+	let init_timer = Instant::now();
+
+	let COMPILETIME: String = Local::now().to_rfc3339();
+
 	let args: Vec<String> = env::args().collect();
 	let CLASS: &str = &args[1];
-	let NA: usize = match CLASS {
+	let NA: i32 = match CLASS {
 		"S"=>1400,
 		"W"=>7000,
 		"A"=>14000,
-		"B"=>75000.
+		"B"=>75000,
 		"C"=>150000,
 		"D"=>1500000,
 		"E"=>9000000,
 		_=>1400
 	};
-	let NONZER: usize = match CLASS {
+	let NONZER: i32 = match CLASS {
 		"S"=>7,
 		"W"=>8,
 		"A"=>11,
-		"B"=>13.
+		"B"=>13,
 		"C"=>15,
 		"D"=>21,
 		"E"=>26,
 		_=>7
 	};
-	let NITER: usize = match CLASS {
+	let NITER: i32 = match CLASS {
 		"S"=>15,
 		"W"=>15,
 		"A"=>15,
-		"B"=>75.
+		"B"=>75,
 		"C"=>75,
 		"D"=>100,
 		"E"=>100,
@@ -136,44 +61,46 @@ fn main() {
 		"S"=>10.0,
 		"W"=>12.0,
 		"A"=>20.0,
-		"B"=>60.0.
+		"B"=>60.0,
 		"C"=>110.0,
 		"D"=>500.0,
 		"E"=>1500.0,
 		_=>10.0
 	};
-	let RCOND: f64 = 0.1;
-	let NZ = (NA*(NONZER+1)*(NONZER+1))
-	let NAZ = (NA*(NONZER+1))
 
-	let mut colidx: Vec<i32>;
-	let mut rowstr: Vec<i32>;
-	let mut iv: Vec<i32>;
-	let mut arow: Vec<i32>;
-	let mut acol: Vec<i32>;
-	let mut aelt: Vec<f64>;
-	let mut a: Vec<f64>;
-	let mut x: Vec<f64>;
-	let mut z: Vec<f64>;
-	let mut p: Vec<f64>;
-	let mut q: Vec<f64>;
-	let mut r: Vec<f64>;	
+	let NZ = NA*(NONZER+1)*(NONZER+1);
+	let NAZ = NA*(NONZER+1);	
 
-	let mut naa: i32;
-	let mut nzz: i32;
-	let mut firstrow: i32;
-	let mut lastrow: i32;
-	let mut firstcol: i32;
-	let mut lastcol: i32;
-	let mut amult: f64;
-	let mut tran: f64;
-	let mut timeron: bool;
+	let mut colidx: Vec<i32> = vec![0; NZ.try_into().unwrap()];
+	let mut rowstr: Vec<i32> = vec![0; (NA + 1).try_into().unwrap()];
+	let mut iv: Vec<i32> = vec![0; NA.try_into().unwrap()];
+	let mut arow: Vec<i32> = vec![0; NA.try_into().unwrap()];
+	let mut acol: Vec<i32> = vec![0; NAZ.try_into().unwrap()];
+	let mut aelt: Vec<f64> = vec![0.0; NAZ.try_into().unwrap()];
+	let mut a: Vec<f64> = vec![0.0; NZ.try_into().unwrap()];
+	let mut x: Vec<f64> = vec![0.0; (NA+2).try_into().unwrap()];
+	let mut z: Vec<f64> = vec![0.0; (NA+2).try_into().unwrap()];
+	let mut p: Vec<f64> = vec![0.0; (NA+2).try_into().unwrap()];
+	let mut q: Vec<f64> = vec![0.0; (NA+2).try_into().unwrap()];
+	let mut r: Vec<f64> = vec![0.0; (NA+2).try_into().unwrap()];
 
-	let mut i, mut j, mut k, mut it: i32, i32, i32, i32;
-	let mut zeta, mut rnorm, mut norm_temp1, mut norm_temp2, mut t, mut mflops, mut tmax, mut zeta_verify_value, mut epsilon, mut err: f64,f64,f64,f64,f64,f64,f64,f64,f64,f64;
+	let mut naa: i32 = 0;
+	let mut nzz: i32 = 0;
+	let mut firstrow: i32 = 0;
+	let mut lastrow: i32 = 0;
+	let mut firstcol: i32 = 0;
+	let mut lastcol: i32 = 0;
+	let mut amult: f64 = 0.0;
+	let mut tran: f64 = 0.0;
+	let mut timeron: bool = false;
+	
+	let (mut i, mut j, mut k, mut it): (i32, i32, i32, i32);
+	let (mut zeta, mut norm_temp1, mut norm_temp2, mut t, mut mflops, mut tmax, mut zeta_verify_value, mut epsilon, err): (f64,f64,f64,f64,f64,f64,f64,f64,f64);
+	let mut rnorm: f64 = 0.0;
 	let mut verified: bool;
 
-	let mut t_names: Vec<Vec<char, T_LAST>>;
+	// usado somente nos timers
+	//let mut t_names: [[char; T_LAST]]Vec<Vec<char, T_LAST>>;
 
 	firstrow = 0;
 	lastrow = NA - 1;
@@ -188,754 +115,415 @@ fn main() {
 		"C"=>28.973605592845,
 		"D"=>52.514532105794,
 		"E"=>77.522164599383,
-		_=>8.5971775078648,
-	}
+		_=>8.5971775078648
+	};
 
-	println!("\n\n NAS Parallel Benchmarks 4.1 Serial C++ version - CG Benchmark\n\n");
-	println!(" Size: %11d\n", NA);
-	println!(" Iterations: %5d\n", NITER);
+	println!("\n\n NAS Parallel Benchmarks 4.1 Serial Rust version - CG Benchmark\n");
+	println!(" Size: {}", &NA);
+	println!(" Iterations: {}", &NITER);
 
 	naa = NA;
 	nzz = NZ;
 
 	tran  = 314159265.0;
 	amult = 1220703125.0;
-	zeta  = randlc(&mut tran, amult);
-
-	makea(&naa, &nzz, &a, &colidx, &rowstr, &firstrow, &lastrow, &firstcol, &lastcol, &arow, &acol, &aelt, &iv);
+	zeta  = randdp::randlc(&mut tran, amult);
+	
+	makea(&mut naa, &mut nzz, &mut a, &mut colidx, &mut rowstr, &firstrow, &lastrow, &firstcol, &lastcol, &mut arow, &mut acol, &mut aelt, &mut iv, &NONZER, &SHIFT, &mut tran, &amult);
 
 	for j in 0..=(lastcol - firstrow) {
-		for k in rowstr[j]..rowstr[j + 1] {
-			colidx[k] = colidx[k] - firstcol;
+		for k in rowstr[j as usize]..rowstr[(j + 1) as usize] {
+			colidx[k as usize] = colidx[k as usize] - firstcol;
 		}
 	}
 
 	for i in 0..=NA {
-		x[i] = 1.0;
+		x[i as usize] = 1.0;
 	}
-	//let start = Instant::now();
-
-}
-	makea(naa, 
-			nzz, 
-			a, 
-			colidx, 
-			rowstr, 
-			firstrow, 
-			lastrow, 
-			firstcol, 
-			lastcol, 
-			arow, 
-			(int(*)[NONZER+1])(void*)acol, 
-			(double(*)[NONZER+1])(void*)aelt,
-			iv);
-
-	/*
-	 * ---------------------------------------------------------------------
-	 * note: as a result of the above call to makea:
-	 * values of j used in indexing rowstr go from 0 --> lastrow-firstrow
-	 * values of colidx which are col indexes go from firstcol --> lastcol
-	 * so:
-	 * shift the col index vals from actual (firstcol --> lastcol) 
-	 * to local, i.e., (0 --> lastcol-firstcol)
-	 * ---------------------------------------------------------------------
-	 */
-	for(j = 0; j < lastrow - firstrow + 1; j++){
-		for(k = rowstr[j]; k < rowstr[j+1]; k++){
-			colidx[k] = colidx[k] - firstcol;
-		}
-	}
-
-	/* set starting vector to (1, 1, .... 1) */
-	for(i = 0; i < NA+1; i++){
-		x[i] = 1.0;
-	}
-	for(j = 0; j<lastcol-firstcol+1; j++){
-		q[j] = 0.0;
-		z[j] = 0.0;
-		r[j] = 0.0;
-		p[j] = 0.0;
+	for j in 0..=(lastcol - firstcol) {
+		q[j as usize] = 0.0;
+		z[j as usize] = 0.0;
+		r[j as usize] = 0.0;
+		p[j as usize] = 0.0;
 	}
 	zeta = 0.0;
 
-	/*
-	 * -------------------------------------------------------------------
-	 * ---->
-	 * do one iteration untimed to init all code and data page tables
-	 * ----> (then reinit, start timing, to niter its)
-	 * -------------------------------------------------------------------*/
-	for(it = 1; it <= 1; it++){
-		/* the call to the conjugate gradient routine */
-		conj_grad(colidx, rowstr, x, z, a, p, q, r, &rnorm);
+	// untimed iteration to init everything
+	conj_grad(&mut colidx, &mut rowstr, &mut x, &mut z, &mut a, &mut p, &mut q, &mut r, &mut rnorm, &naa, &lastcol, &firstcol, &lastrow, &firstrow);
 
-		/*
-		 * --------------------------------------------------------------------
-		 * zeta = shift + 1/(x.z)
-		 * so, first: (x.z)
-		 * also, find norm of z
-		 * so, first: (z.z)
-		 * --------------------------------------------------------------------
-		 */
-		norm_temp1 = 0.0;
-		norm_temp2 = 0.0;
-		for(j = 0; j < lastcol - firstcol + 1; j++){
-			norm_temp1 = norm_temp1 + x[j] * z[j];
-			norm_temp2 = norm_temp2 + z[j] * z[j];
-		}
-		norm_temp2 = 1.0 / sqrt(norm_temp2);
+	norm_temp1 = 0.0;
+	norm_temp2 = 0.0;
 
-		/* normalize z to obtain x */
-		for(j = 0; j < lastcol - firstcol + 1; j++){     
-			x[j] = norm_temp2 * z[j];
-		}
-	} /* end of do one iteration untimed */
+	for j in 0..=(lastcol - firstcol) {
+		norm_temp1 = norm_temp1 + x[j as usize] * z[j as usize];
+		norm_temp2 = norm_temp2 + z[j as usize] * z[j as usize];
+	}
+	norm_temp2 = 1.0 / norm_temp2.sqrt();
 
-	/* set starting vector to (1, 1, .... 1) */	
-	for(i = 0; i < NA+1; i++){
-		x[i] = 1.0;
+	for j in 0..=(lastcol - firstcol) {
+		x[j as usize] = norm_temp2 * z[j as usize];
+	}
+
+	// starting vector to (1, 1, ..., 1)
+	for i in 0..=NA {
+		x[i as usize] = 1.0;
 	}
 	zeta = 0.0;
 
-	timer_stop(T_INIT);
+	t = init_timer.elapsed().as_secs_f64();
+	println!(" Initialization time = {} seconds", &t);
+	let bench_timer = Instant::now();
 
-	printf(" Initialization time = %15.3f seconds\n", timer_read(T_INIT));
-
-	timer_start(T_BENCH);
-
-	/*
-	 * --------------------------------------------------------------------
-	 * ---->
-	 * main iteration for inverse power method
-	 * ---->
-	 * --------------------------------------------------------------------
-	 */
-	for(it = 1; it <= NITER; it++){
-		/* the call to the conjugate gradient routine */
-		if(timeron){timer_start(T_CONJ_GRAD);}
-		conj_grad(colidx, rowstr, x, z, a, p, q, r, &rnorm);
-		if(timeron){timer_stop(T_CONJ_GRAD);}
-
-		/*
-		 * --------------------------------------------------------------------
-		 * zeta = shift + 1/(x.z)
-		 * so, first: (x.z)
-		 * also, find norm of z
-		 * so, first: (z.z)
-		 * --------------------------------------------------------------------
-		 */
+	// main iteration
+	for it in 1..=NITER {
+		conj_grad(&mut colidx, &mut rowstr, &mut x, &mut z, &mut a, &mut p, &mut q, &mut r, &mut rnorm, &naa, &lastcol, &firstcol, &lastrow, &firstrow);
 		norm_temp1 = 0.0;
 		norm_temp2 = 0.0;
-		for(j = 0; j < lastcol - firstcol + 1; j++){
-			norm_temp1 = norm_temp1 + x[j]*z[j];
-			norm_temp2 = norm_temp2 + z[j]*z[j];
+
+		for j in 0..=(lastcol - firstcol) {
+			norm_temp1 = norm_temp1 + x[j as usize] * z[j as usize];
+			norm_temp2 = norm_temp2 + z[j as usize] * z[j as usize];
 		}
-		norm_temp2 = 1.0 / sqrt(norm_temp2);
+
+		norm_temp2 = 1.0 / norm_temp2.sqrt();
+
 		zeta = SHIFT + 1.0 / norm_temp1;
-		if(it==1){printf("\n   iteration           ||r||                 zeta\n");}
-		printf("    %5d       %20.14e%20.13e\n", it, rnorm, zeta);
 
-		/* normalize z to obtain x */
-		for(j = 0; j < lastcol - firstcol + 1; j++){
-			x[j] = norm_temp2 * z[j];
+		if it == 1 {
+			println!("\n   iteration           ||r||                 zeta");
 		}
-	} /* end of main iter inv pow meth */
-
-	timer_stop(T_BENCH);
-
-	/*
-	 * --------------------------------------------------------------------
-	 * end of timed section
-	 * --------------------------------------------------------------------
-	 */
-
-	t = timer_read(T_BENCH);
-
-	printf(" Benchmark completed\n");
-
-	epsilon = 1.0e-10;
-	if(class_npb != 'U'){
-		err = fabs(zeta - zeta_verify_value) / zeta_verify_value;
-		if(err <= epsilon){
-			verified = TRUE;
-			printf(" VERIFICATION SUCCESSFUL\n");
-			printf(" Zeta is    %20.13e\n", zeta);
-			printf(" Error is   %20.13e\n", err);
-		}else{
-			verified = FALSE;
-			printf(" VERIFICATION FAILED\n");
-			printf(" Zeta                %20.13e\n", zeta);
-			printf(" The correct zeta is %20.13e\n", zeta_verify_value);
+		println!("    {}       {}   {}", &it, &rnorm, &zeta);
+		// normalize z to obtain x
+		for j in 0..=(lastcol - firstcol) {
+			x[j as usize] = norm_temp2 * z[j as usize];
 		}
-	}else{
-		verified = FALSE;
-		printf(" Problem size unknown\n");
-		printf(" NO VERIFICATION PERFORMED\n");
 	}
-	if(t != 0.0){
-		mflops = (double)(2.0*NITER*NA)
-			* (3.0+(double)(NONZER*(NONZER+1))
-					+ 25.0
-					* (5.0+(double)(NONZER*(NONZER+1)))+3.0)
-			/ t / 1000000.0;
-	}else{
+
+	t = bench_timer.elapsed().as_secs_f64();
+	println!(" Benchmark completed");
+
+	//epsilon = 1.0e-10;
+	epsilon = 0.0000000001;
+
+	err = (zeta - zeta_verify_value).abs() / zeta_verify_value;
+
+	if err <= epsilon {
+		verified = true;
+		println!(" VERIFICATION SUCCESSFUL");
+		println!(" Zeta is    {}", zeta);
+		println!(" Error is   {}", err);
+	}
+	else {
+		verified = false;
+		println!(" VERIFICATION FAILED");
+		println!(" Zeta is    {}", zeta);
+		println!(" Error is   {}", err);
+	}
+
+	if t != 0.0 {
+		mflops = (2.0 * NITER as f64 * NA as f64) * (3.0 + (NONZER as f64 * (NONZER as f64 + 1.0)) + 25.0 * (5.0 + (NONZER as f64 * (NONZER as f64 + 1.0))) + 3.0) / t / 1000000.0;
+	}
+	else {
 		mflops = 0.0;
 	}
-	c_print_results((char*)"CG",
-			class_npb,
-			NA,
-			0,
-			0,
-			NITER,
-			t,
-			mflops,
-			(char*)"          floating point",
-			verified,
-			(char*)NPBVERSION,
-			(char*)COMPILETIME,
-			(char*)COMPILERVERSION,
-			(char*)CS1,
-			(char*)CS2,
-			(char*)CS3,
-			(char*)CS4,
-			(char*)CS5,
-			(char*)CS6,
-			(char*)CS7);
-
-	/*
-	 * ---------------------------------------------------------------------
-	 * more timers
-	 * ---------------------------------------------------------------------
-	 */
-	if(timeron){
-		tmax = timer_read(T_BENCH);
-		if(tmax == 0.0){tmax = 1.0;}
-		printf("  SECTION   Time (secs)\n");
-		for(i = 0; i < T_LAST; i++){
-			t = timer_read(i);
-			if(i == T_INIT){
-				printf("  %8s:%9.3f\n", t_names[i], t);
-			}else{
-				printf("  %8s:%9.3f  (%6.2f%%)\n", t_names[i], t, t*100.0/tmax);
-				if(i == T_CONJ_GRAD){
-					t = tmax - t;
-					printf("    --> %8s:%9.3f  (%6.2f%%)\n", "rest", t, t*100.0/tmax);
-				}
-			}
-		}
-	}
-
-	return 0;
+	
+	print_results::rust_print_results("CG", CLASS, NA.try_into().unwrap(), 0, 0, NITER, t, mflops, "          floating point", verified, NPBVERSION, COMPILETIME.as_str(), COMPILERVERSION, LIBVERSION, "1", CS1, CS2, CS3, CS4, CS5, CS6, CS7);
 }
 
-/*
- * ---------------------------------------------------------------------
- * floating point arrays here are named as in NPB1 spec discussion of 
- * CG algorithm
- * ---------------------------------------------------------------------
- */
-static void conj_grad(int colidx[],
-		int rowstr[],
-		double x[],
-		double z[],
-		double a[],
-		double p[],
-		double q[],
-		double r[],
-		double* rnorm){
-	int j, k;
-	int cgit, cgitmax;
-	double d, sum, rho, rho0, alpha, beta;
+fn conj_grad(colidx: &mut Vec<i32>, rowstr: &mut Vec<i32>, x: &mut Vec<f64>, z: &mut Vec<f64>, a: &mut Vec<f64>, p: &mut Vec<f64>, q: &mut Vec<f64>, r: &mut Vec<f64>, rnorm: &mut f64, naa: &i32, lastcol: &i32, firstcol: &i32, lastrow: &i32, firstrow: &i32) {
+	let (mut j, mut k): (i32, i32);
+	let (mut cgit, cgitmax): (i32, i32);
+	let (mut d, mut sum, mut rho, mut rho0, mut alpha, mut beta): (f64, f64, f64, f64, f64, f64);
 
 	cgitmax = 25;
 
 	rho = 0.0;
 
-	/* initialize the CG algorithm */
-	for(j = 0; j < naa+1; j++){
-		q[j] = 0.0;
-		z[j] = 0.0;
-		r[j] = x[j];
-		p[j] = r[j];
+	for j in 0..=(*naa) {
+		q[j as usize] = 0.0;
+		z[j as usize] = 0.0;
+		r[j as usize] = x[j as usize];
+		p[j as usize] = r[j as usize];
 	}
 
-	/*
-	 * --------------------------------------------------------------------
-	 * rho = r.r
-	 * now, obtain the norm of r: First, sum squares of r elements locally...
-	 * --------------------------------------------------------------------
-	 */
-	for(j = 0; j < lastcol - firstcol + 1; j++){
-		rho = rho + r[j]*r[j];
+	for j in 0..=(*lastcol - *firstcol) {
+		rho = rho + r[j as usize] * r[j as usize];
 	}
 
-	/* the conj grad iteration loop */
-	for(cgit = 1; cgit <= cgitmax; cgit++){
-		/*
-		 * ---------------------------------------------------------------------
-		 * q = A.p
-		 * the partition submatrix-vector multiply: use workspace w
-		 * ---------------------------------------------------------------------
-		 * 
-		 * note: this version of the multiply is actually (slightly: maybe %5) 
-		 * faster on the sp2 on 16 nodes than is the unrolled-by-2 version 
-		 * below. on the Cray t3d, the reverse is TRUE, i.e., the 
-		 * unrolled-by-two version is some 10% faster.  
-		 * the unrolled-by-8 version below is significantly faster
-		 * on the Cray t3d - overall speed of code is 1.5 times faster.
-		 */
-		for(j = 0; j < lastrow - firstrow + 1; j++){
+	for cgit in 1..=cgitmax {
+		for j in 0..=(*lastrow - *firstrow) {
 			sum = 0.0;
-			for(k = rowstr[j]; k < rowstr[j+1]; k++){
-				sum = sum + a[k]*p[colidx[k]];
+
+			for k in rowstr[j as usize]..rowstr[(j + 1) as usize] {
+				//dbg!(a[k as usize]);
+				sum += a[k as usize] * p[colidx[k as usize] as usize];
 			}
-			q[j] = sum;
+			q[j as usize] = sum;
 		}
 
-		/*
-		 * --------------------------------------------------------------------
-		 * obtain p.q
-		 * --------------------------------------------------------------------
-		 */
 		d = 0.0;
-		for (j = 0; j < lastcol - firstcol + 1; j++) {
-			d = d + p[j]*q[j];
+		for j in 0..=(*lastcol - *firstcol) {
+			d = d + p[j as usize] * q[j as usize];
 		}
 
-		/*
-		 * --------------------------------------------------------------------
-		 * obtain alpha = rho / (p.q)
-		 * -------------------------------------------------------------------
-		 */
 		alpha = rho / d;
 
-		/*
-		 * --------------------------------------------------------------------
-		 * save a temporary of rho
-		 * --------------------------------------------------------------------
-		 */
 		rho0 = rho;
 
-		/*
-		 * ---------------------------------------------------------------------
-		 * obtain z = z + alpha*p
-		 * and    r = r - alpha*q
-		 * ---------------------------------------------------------------------
-		 */
 		rho = 0.0;
-		for(j = 0; j < lastcol - firstcol + 1; j++){
-			z[j] = z[j] + alpha*p[j];
-			r[j] = r[j] - alpha*q[j];
+
+		for j in 0..=(*lastcol - *firstcol) {
+			z[j as usize] = z[j as usize] + alpha * p[j as usize];
+			r[j as usize] = r[j as usize] - alpha * q[j as usize];
 		}
 
-		/*
-		 * ---------------------------------------------------------------------
-		 * rho = r.r
-		 * now, obtain the norm of r: first, sum squares of r elements locally...
-		 * ---------------------------------------------------------------------
-		 */
-		for(j = 0; j < lastcol - firstcol + 1; j++){
-			rho = rho + r[j]*r[j];
+		for j in 0..=(*lastcol - *firstcol) {
+			rho = rho + r[j as usize] * r[j as usize];
 		}
 
-		/*
-		 * ---------------------------------------------------------------------
-		 * obtain beta
-		 * ---------------------------------------------------------------------
-		 */
 		beta = rho / rho0;
 
-		/*
-		 * ---------------------------------------------------------------------
-		 * p = r + beta*p
-		 * ---------------------------------------------------------------------
-		 */
-		for(j = 0; j < lastcol - firstcol + 1; j++){
-			p[j] = r[j] + beta*p[j];
+		for j in 0..=(*lastcol - *firstcol) {
+			p[j as usize] = r[j as usize] + beta * p[j as usize]
 		}
-	} /* end of do cgit=1, cgitmax */
+	}
 
-	/*
-	 * ---------------------------------------------------------------------
-	 * compute residual norm explicitly: ||r|| = ||x - A.z||
-	 * first, form A.z
-	 * the partition submatrix-vector multiply
-	 * ---------------------------------------------------------------------
-	 */
 	sum = 0.0;
-	for(j = 0; j < lastrow - firstrow + 1; j++){
+	for j in 1..=(*lastrow - *firstrow) {
 		d = 0.0;
-		for(k = rowstr[j]; k < rowstr[j+1]; k++){
-			d = d + a[k]*z[colidx[k]];
+		
+		//for k in rowstr[j as usize]..rowstr[(j + 1) as usize] - 1 {
+		for k in rowstr[j as usize]..rowstr[(j + 1) as usize] {
+			d = d + a[k as usize] * z[colidx[k as usize] as usize];
 		}
-		r[j] = d;
+		r[j as usize] = d;
 	}
 
-	/*
-	 * ---------------------------------------------------------------------
-	 * at this point, r contains A.z
-	 * ---------------------------------------------------------------------
-	 */
-	for(j = 0; j < lastcol-firstcol+1; j++){
-		d   = x[j] - r[j];
-		sum = sum + d*d;
+	for j in 0..=(*lastcol - *firstcol) {
+		d = x[j as usize] - r[j as usize];
+		sum = sum + d * d;
 	}
-
-	*rnorm = sqrt(sum);
+	//dbg!(&sum);
+	*rnorm = sum.sqrt();
+}
+	
+fn icnvrt(x: &f64, ipwr2: &i32) -> i32 {
+	return ((*ipwr2 as f64) * (*x)).trunc() as i32;
 }
 
-/*
- * ---------------------------------------------------------------------
- * scale a double precision number x in (0,1) by a power of 2 and chop it
- * ---------------------------------------------------------------------
- */
-static int icnvrt(double x, int ipwr2){
-	return (int)(ipwr2 * x);
-}
+fn makea(n: &mut i32, nz: &mut i32, a: &mut Vec<f64>, colidx: &mut Vec<i32>, rowstr: &mut Vec<i32>, firstrow: &i32, lastrow: &i32, firstcol: &i32, lastcol: &i32, arow: &mut Vec<i32>, acol: &mut Vec<i32>, aelt: &mut Vec<f64>, iv: &mut Vec<i32>, NONZER: &i32, SHIFT: &f64, tran: &mut f64, amult: &f64 ) {
+	let (mut iouter, mut ivelt, mut nzv, mut nn1): (i32, i32, i32, i32);
+	let mut ivc: Vec<i32> = vec![0; (*NONZER + 1).try_into().unwrap()];
+	let mut vc: Vec<f64> = vec![0.0; (*NONZER + 1).try_into().unwrap()];
 
-/*
- * ---------------------------------------------------------------------
- * generate the test problem for benchmark 6
- * makea generates a sparse matrix with a
- * prescribed sparsity distribution
- *
- * parameter    type        usage
- *
- * input
- *
- * n            i           number of cols/rows of matrix
- * nz           i           nonzeros as declared array size
- * rcond        r*8         condition number
- * shift        r*8         main diagonal shift
- *
- * output
- *
- * a            r*8         array for nonzeros
- * colidx       i           col indices
- * rowstr       i           row pointers
- *
- * workspace
- *
- * iv, arow, acol i
- * aelt           r*8
- * ---------------------------------------------------------------------
- */
-static void makea(int n,
-		int nz,
-		double a[],
-		int colidx[],
-		int rowstr[],
-		int firstrow,
-		int lastrow,
-		int firstcol,
-		int lastcol,
-		int arow[],
-		int acol[][NONZER+1],
-		double aelt[][NONZER+1],
-		int iv[]){
-	int iouter, ivelt, nzv, nn1;
-	int ivc[NONZER+1];
-	double vc[NONZER+1];
-
-	/*
-	 * --------------------------------------------------------------------
-	 * nonzer is approximately  (int(sqrt(nnza /n)));
-	 * --------------------------------------------------------------------
-	 * nn1 is the smallest power of two not less than n
-	 * --------------------------------------------------------------------
-	 */
 	nn1 = 1;
-	do{
-		nn1 = 2 * nn1;
-	}while(nn1 < n);
 
-	/*
-	 * -------------------------------------------------------------------
-	 * generate nonzero positions and save for the use in sparse
-	 * -------------------------------------------------------------------
-	 */
-	for(iouter = 0; iouter < n; iouter++){
-		nzv = NONZER;
-		sprnvc(n, nzv, nn1, vc, ivc);
-		vecset(n, vc, ivc, &nzv, iouter+1, 0.5);
-		arow[iouter] = nzv;
-		for(ivelt = 0; ivelt < nzv; ivelt++){
-			acol[iouter][ivelt] = ivc[ivelt] - 1;
-			aelt[iouter][ivelt] = vc[ivelt];
+	loop {
+		nn1 = 2 * nn1;
+
+		if nn1 >= *n {
+			break;
 		}
 	}
 
-	/*
-	 * ---------------------------------------------------------------------
-	 * ... make the sparse matrix from list of elements with duplicates
-	 * (iv is used as  workspace)
-	 * ---------------------------------------------------------------------
-	 */
-	sparse(a,
-			colidx,
-			rowstr,
-			n,
-			nz,
-			NONZER,
-			arow,
-			acol,
-			aelt,
-			firstrow,
-			lastrow,
-			iv,
-			RCOND,
-			SHIFT);
+	for iouter in 0..*n {
+		nzv = *NONZER;
+		sprnvc(n, &mut nzv, &nn1, &mut vc, &mut ivc, tran, &amult);
+		vecset(n, &mut vc, &mut ivc, &mut nzv, iouter + 1, 0.5);
+		arow[iouter as usize] = nzv;
+		for ivelt in 0..nzv {
+			acol[(iouter * (*NONZER + 1) + ivelt) as usize] = ivc[ivelt as usize] - 1;
+			aelt[(iouter * (*NONZER + 1) + ivelt) as usize] = vc[ivelt as usize];
+		}
+	}
+
+	sparse(a, colidx, rowstr, n, nz, NONZER, arow, acol, aelt, firstrow, lastrow, iv, &SHIFT);
 }
 
-/*
- * ---------------------------------------------------------------------
- * rows range from firstrow to lastrow
- * the rowstr pointers are defined for nrows = lastrow-firstrow+1 values
- * ---------------------------------------------------------------------
- */
-static void sparse(double a[],
-		int colidx[],
-		int rowstr[],
-		int n,
-		int nz,
-		int nozer,
-		int arow[],
-		int acol[][NONZER+1],
-		double aelt[][NONZER+1],
-		int firstrow,
-		int lastrow,
-		int nzloc[],
-		double rcond,
-		double shift){	
-	int nrows;
+fn sparse(a: &mut Vec<f64>, colidx: &mut Vec<i32>, rowstr: &mut Vec<i32>, n: &mut i32, nz: &mut i32, nozer: & i32, arow: &mut Vec<i32>, acol: &mut Vec<i32>, aelt: &mut Vec<f64>, firstrow: &i32, lastrow: &i32, nzloc: &mut Vec<i32>, shift: &f64) {
+	let nrows: i32;
 
-	/*
-	 * ---------------------------------------------------
-	 * generate a sparse matrix from a list of
-	 * [col, row, element] tri
-	 * ---------------------------------------------------
-	 */
-	int i, j, j1, j2, nza, k, kk, nzrow, jcol;
-	double size, scale, ratio, va;
-	boolean goto_40;
+	let (mut i, mut j, mut j1, mut j2, mut nza, mut kk, mut nzrow, mut jcol): (i32, i32, i32, i32, i32, i32, i32, i32);
+	let mut last_k: i32 = 0;
+	let (mut size, mut scale, ratio, mut va): (f64, f64, f64, f64);
+	let mut goto_40: bool;
 
-	/*
-	 * --------------------------------------------------------------------
-	 * how many rows of result
-	 * --------------------------------------------------------------------
-	 */
-	nrows = lastrow - firstrow + 1;
-
-	/*
-	 * --------------------------------------------------------------------
-	 * ...count the number of triples in each row
-	 * --------------------------------------------------------------------
-	 */
-	for(j = 0; j < nrows+1; j++){
-		rowstr[j] = 0;
+	nrows = *lastrow - *firstrow + 1;
+	
+	for j in 0..=nrows {
+		rowstr[j as usize] = 0;
 	}
-	for(i = 0; i < n; i++){
-		for(nza = 0; nza < arow[i]; nza++){
-			j = acol[i][nza] + 1;
-			rowstr[j] = rowstr[j] + arow[i];
+	for i in 0..(*n) {
+		for nza in 0..arow[i as usize] {
+			//j = acol[i as usize][nza as usize] + 1;
+			j = acol[(i * (*nozer + 1) + nza) as usize] + 1;
+			//j = acol[(i * (*nozer + 1) + nza) as usize];
+			rowstr[j as usize] = rowstr[j as usize] + arow[i as usize];
 		}
 	}
+	
 	rowstr[0] = 0;
-	for(j = 1; j < nrows+1; j++){
-		rowstr[j] = rowstr[j] + rowstr[j-1];
+	for j in 1..=nrows {
+		rowstr[j as usize] = rowstr[j as usize] + rowstr[(j - 1) as usize];
 	}
-	nza = rowstr[nrows] - 1;
-
-	/*
-	 * ---------------------------------------------------------------------
-	 * ... rowstr(j) now is the location of the first nonzero
-	 * of row j of a
-	 * ---------------------------------------------------------------------
-	 */
-	if(nza > nz){
-		printf("Space for matrix elements exceeded in sparse\n");
-		printf("nza, nzmax = %d, %d\n", nza, nz);
-		exit(EXIT_FAILURE);
+	nza = rowstr[nrows as usize] - 1;
+	
+	if nza > *nz {
+		println!("Space for matrix elements exceeded in sparse");
+		println!("nza, nzmax = {}, {}", &nza, &nz);
+		std::process::exit(-1);
 	}
-
-	/*
-	 * ---------------------------------------------------------------------
-	 * ... preload data pages
-	 * ---------------------------------------------------------------------
-	 */
-	for(j = 0; j < nrows; j++){
-		for(k = rowstr[j]; k < rowstr[j+1]; k++){
-			a[k] = 0.0;
-			colidx[k] = -1;
+	
+	for j in 0..nrows {
+		for k in rowstr[j as usize]..rowstr[(j + 1) as usize] {
+			a[k as usize] = 0.0;
+			colidx[k as usize] = -1;
 		}
-		nzloc[j] = 0;
+		nzloc[j as usize] = 0;
 	}
 
-	/*
-	 * ---------------------------------------------------------------------
-	 * ... generate actual values by summing duplicates
-	 * ---------------------------------------------------------------------
-	 */
 	size = 1.0;
-	ratio = pow(rcond, (1.0 / (double)(n)));
-	for(i = 0; i < n; i++){
-		for(nza = 0; nza < arow[i]; nza++){
-			j = acol[i][nza];
+	ratio = f64::powf(RCOND, 1.0 / (*n as f64));
+	for i in 0..(*n) {
+		for nza in 0..arow[i as usize] {
+			j = acol[(i * (*nozer + 1) + nza) as usize];
+			
+			scale = size * aelt[(i * (*nozer + 1) + nza) as usize];
 
-			scale = size * aelt[i][nza];
-			for(nzrow = 0; nzrow < arow[i]; nzrow++){
-				jcol = acol[i][nzrow];
-				va = aelt[i][nzrow] * scale;
+			for nzrow in 0..arow[i as usize] {
+				jcol = acol[(i * (*nozer + 1) + nzrow) as usize];
+				va = aelt[(i * (*nozer + 1) + nzrow) as usize] * scale;
 
-				/*
-				 * --------------------------------------------------------------------
-				 * ... add the identity * rcond to the generated matrix to bound
-				 * the smallest eigenvalue from below by rcond
-				 * --------------------------------------------------------------------
-				 */
-				if(jcol == j && j == i){
-					va = va + rcond - shift;
+				//if (jcol == j) & (j == i) {
+				if (jcol == j) && (j == i) {
+					va = va + RCOND - shift;
 				}
 
-				goto_40 = FALSE;
-				for(k = rowstr[j]; k < rowstr[j+1]; k++){
-					if(colidx[k] > jcol){
-						/*
-						 * ----------------------------------------------------------------
-						 * ... insert colidx here orderly
-						 * ----------------------------------------------------------------
-						 */
-						for(kk = rowstr[j+1]-2; kk >= k; kk--){
-							if(colidx[kk] > -1){
-								a[kk+1] = a[kk];
-								colidx[kk+1] = colidx[kk];
+				goto_40 = false;
+				for k in rowstr[j as usize]..rowstr[(j + 1) as usize] {
+					last_k = k;
+					if colidx[k as usize] > jcol {
+						kk = rowstr[(j + 1) as usize] - 2;
+						loop {
+							if kk < k {
+								break;
 							}
+							if colidx[kk as usize] > -1 {
+								a[(kk + 1) as usize] = a[kk as usize];
+								colidx[(kk + 1) as usize] = colidx[kk as usize];
+							}
+							kk -= 1;
 						}
-						colidx[k] = jcol;
-						a[k]  = 0.0;
-						goto_40 = TRUE;
+						
+						colidx[k as usize] = jcol;
+						a[k as usize] = 0.0;
+						goto_40 = true;
 						break;
-					}else if(colidx[k] == -1){
-						colidx[k] = jcol;
-						goto_40 = TRUE;
+					}
+					else if colidx[k as usize] == -1 {
+						colidx[k as usize] = jcol;
+						goto_40 = true;
 						break;
-					}else if(colidx[k] == jcol){
-						/*
-						 * --------------------------------------------------------------
-						 * ... mark the duplicated entry
-						 * -------------------------------------------------------------
-						 */
-						nzloc[j] = nzloc[j] + 1;
-						goto_40 = TRUE;
+					}
+					else if colidx[k as usize] == jcol {
+						nzloc[j as usize] = nzloc[j as usize] + 1;
+						goto_40 = true;
 						break;
 					}
 				}
-				if(goto_40 == FALSE){
-					printf("internal error in sparse: i=%d\n", i);
-					exit(EXIT_FAILURE);
+				if goto_40 == false {
+					println!("internal error in sparse: i = {}", &i);
+					std::process::exit(-1);
 				}
-				a[k] = a[k] + va;
+				//dbg!(&k);
+				// pode ser um problema com o k tambem
+				a[last_k as usize] = a[last_k as usize] + va;
+				//dbg!(a[k as usize]);
+				//dbg!(k);
 			}
 		}
 		size = size * ratio;
 	}
-
-	/*
-	 * ---------------------------------------------------------------------
-	 * ... remove empty entries and generate final results
-	 * ---------------------------------------------------------------------
-	 */
-	for(j = 1; j < nrows; j++){
-		nzloc[j] = nzloc[j] + nzloc[j-1];
+	//dbg!(&a);
+	for j in 1..nrows {
+		nzloc[j as usize] = nzloc[j as usize] + nzloc[(j - 1) as usize];
 	}
 
-	for(j = 0; j < nrows; j++){
-		if(j > 0){
-			j1 = rowstr[j] - nzloc[j-1];
-		}else{
+	for j in 0..nrows {
+		if j > 0 {
+			j1 = rowstr[j as usize] - nzloc[(j - 1) as usize];
+		}
+		else {
 			j1 = 0;
 		}
-		j2 = rowstr[j+1] - nzloc[j];
-		nza = rowstr[j];
-		for(k = j1; k < j2; k++){
-			a[k] = a[nza];
-			colidx[k] = colidx[nza];
+		j2 = rowstr[(j + 1) as usize] - nzloc[j as usize];
+		nza = rowstr[j as usize];
+		//dbg!(&nza);
+		//dbg!(&a);
+		for k in j1..j2 {
+			// a partir daqui o a da ruim
+			//dbg!(a[nza as usize]);
+			a[k as usize] = a[nza as usize];
+			//dbg!(a[nza as usize]);
+			colidx[k as usize] = colidx[nza as usize];
 			nza = nza + 1;
 		}
 	}
-	for(j = 1; j < nrows+1; j++){
-		rowstr[j] = rowstr[j] - nzloc[j-1];
+	for j in 1..=nrows {
+		rowstr[j as usize] = rowstr[j as usize] - nzloc[(j - 1) as usize];
 	}
-	nza = rowstr[nrows] - 1;
+	nza = rowstr[nrows as usize] - 1;
+	//dbg!(&a);
 }
 
-/*
- * ---------------------------------------------------------------------
- * generate a sparse n-vector (v, iv)
- * having nzv nonzeros
- *
- * mark(i) is set to 1 if position i is nonzero.
- * mark is all zero on entry and is reset to all zero before exit
- * this corrects a performance bug found by John G. Lewis, caused by
- * reinitialization of mark on every one of the n calls to sprnvc
- * ---------------------------------------------------------------------
- */
-static void sprnvc(int n, int nz, int nn1, double v[], int iv[]){
-	int nzv, ii, i;
-	double vecelt, vecloc;
-
+fn sprnvc(n: &mut i32, nz: &mut i32, nn1: &i32, v: &mut Vec<f64>, iv: &mut Vec<i32>, tran: &mut f64, amult: &f64) {
+	let (mut nzv, mut ii, mut i): (i32, i32, i32);
+	let (mut vecelt, mut vecloc): (f64, f64);
+	let mut was_gen: bool = false;
 	nzv = 0;
 
-	while(nzv < nz){
-		vecelt = randlc(&tran, amult);
+	loop {
+		if nzv >= *nz {
+			break;
+		}
 
-		/*
-		 * --------------------------------------------------------------------
-		 * generate an integer between 1 and n in a portable manner
-		 * --------------------------------------------------------------------
-		 */
-		vecloc = randlc(&tran, amult);
-		i = icnvrt(vecloc, nn1) + 1;
-		if(i>n){continue;}
+		vecelt = randdp::randlc(tran, *amult);
+		vecloc = randdp::randlc(tran, *amult);
+		i = icnvrt(&vecloc, nn1) + 1;
 
-		/*
-		 * --------------------------------------------------------------------
-		 * was this integer generated already?
-		 * --------------------------------------------------------------------
-		 */
-		boolean was_gen = FALSE;
-		for(ii = 0; ii < nzv; ii++){
-			if(iv[ii] == i){
-				was_gen = TRUE;
+		if i > *n {
+			continue;
+		}
+
+		was_gen = false;
+		for ii in 0..nzv {
+			if iv[ii as usize] == i {
+				was_gen = true;
 				break;
 			}
 		}
-		if(was_gen){continue;}
-		v[nzv] = vecelt;
-		iv[nzv] = i;
+		if was_gen == true {
+			continue;
+		}
+		v[nzv as usize] = vecelt;
+		iv[nzv as usize] = i;
 		nzv = nzv + 1;
 	}
 }
 
-/*
- * --------------------------------------------------------------------
- * set ith element of sparse vector (v, iv) with
- * nzv nonzeros to val
- * --------------------------------------------------------------------
- */
-static void vecset(int n, double v[], int iv[], int* nzv, int i, double val){
-	int k;
-	boolean set;
+fn vecset(n: &mut i32, v: &mut Vec<f64>, iv: &mut Vec<i32>, nzv: &mut i32, i: i32, val: f64) {
+	let mut k: i32;
+	let mut set: bool = false;
 
-	set = FALSE;
-	for(k = 0; k < *nzv; k++){
-		if(iv[k] == i){
-			v[k] = val;
-			set  = TRUE;
+	for k in 0..*nzv {
+		if iv[k as usize] == i {
+			v[k as usize] = val;
+			set = true;
 		}
 	}
-	if(set == FALSE){
-		v[*nzv]  = val;
-		iv[*nzv] = i;
-		*nzv     = *nzv + 1;
+	if set == false {
+		v[*nzv as usize] = val;
+		iv[*nzv as usize] = i;
+		*nzv = *nzv + 1;
 	}
 }

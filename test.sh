@@ -3,9 +3,9 @@
 export RUSTFLAGS="-Awarnings"
 
 SAVE_PATH=./results
-KERNEL=ep
-CLASS=S
-NUM_THREADS=1
+KERNEL=ep-pp
+CLASS=B
+NUM_THREADS=8
 EXEC_COMMAND="cargo +nightly run --bin $KERNEL --release -- $CLASS $NUM_THREADS"
 
 $EXEC_COMMAND
