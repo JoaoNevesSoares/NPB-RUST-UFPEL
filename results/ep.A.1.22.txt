@@ -1,0 +1,41 @@
+ EP Benchmark Results:
+
+ CPU Time = NOT YET IMPLEMENTED
+ N = 2^28
+ No. Gaussian Pairs =       210832767
+ Sums: sx =      -4.295875165629892e3 sy =      -1.580732573678432e4
+ Counts: 
+0     98257395
+1     93827014
+2     17611549
+3     1110028
+4     26536
+5     245
+6     0
+7     0
+8     0
+
+
+ EP Benchmark Completed
+ class_npb       =                        A
+ Size            =          000000536870912
+ Total threads   =             OMP_NUM_THREADS
+ Iterations      =                        0
+ Time in seconds =             14.542030673
+ Mop/s total     =                    36.92
+ Operation type  = Random numbers generated
+ Verification    =            SUCCESSFUL
+ Version         =                      4.1
+ Compile date    =              19 Feb 2023
+ Compiler ver    =                   13.0.0
+ OpenMP version  =                      1.0
+
+ Compile options:
+
+    RUSTC           = cs1
+    RUST_LINK       = cs2
+    RUST_LIB        = cs3
+    RUST_INC        = cs4
+    RUST_FLAGS      = cs5
+    RUST_LINK_FLAGS = cs6
+    RAND            = cs7
