@@ -1,5 +1,5 @@
 [package]
-name = "PARALELO_1"
+name = "NPB-RUST-UFPEL"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,4 +12,6 @@ path = "./common/src/lib.rs"
 chrono = "0.4.24"
 fma = "0.1.0"
 lazy_static = "1.4.0"
+libm = "0.2.6"
+ndarray = "0.15.6"
 rayon = "1.6.1"

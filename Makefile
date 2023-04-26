@@ -1,9 +1,25 @@
+# REMOVE RUST WARNINGS
 #export RUSTFLAGS="-Awarnings"
 
-KERNEL=cg
-CLASS=S
-NUM_THREADS=8
-EXEC_COMMAND=cargo +nightly run --bin $(KERNEL) --release -- $(CLASS) $(NUM_THREADS)
+# CALLING THIS MAKE FILE
+# make <target> KERNEL=<kernel> CLASS=<class> NUM_THREADS=<num_threads>
 
-all:
+# DEFAULT KERNEL
+KERNEL=cg-pp
+# DEFAULT CLASS
+CLASS=
+# DEFAULT NUM_THREADS
+NUM_THREADS=8
+# DONT OVERWRITE THIS
+PARAMS_COMMAND=cargo +nightly run --bin setparams --release -- $(KERNEL) $(CLASS) $(NUM_THREADS)
+
+COMP_COMMAND=cargo +nightly rustc --bin $(KERNEL)-$(CLASS) --release
+
+EXEC_COMMAND=cargo +nightly run --bin $(KERNEL)-$(CLASS) --release -- $(NUM_THREADS)
+
+compile:
+	$(PARAMS_COMMAND)
+	$(COMP_COMMAND)
+
+run:
 	$(EXEC_COMMAND)
