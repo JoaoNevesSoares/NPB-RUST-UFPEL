@@ -1,8 +1,8 @@
 use std::env;
 use std::time::Instant;
-use chrono::{Local, DateTime};
+use chrono::Local;
 
-use common::rust_timers;
+//use common::rust_timers;
 use common::print_results;
 use common::randdp;
 
@@ -78,7 +78,8 @@ fn main() {
 	let mut acol: Vec<i32> = vec![0; NAZ.try_into().unwrap()];
 	let mut aelt: Vec<f64> = vec![0.0; NAZ.try_into().unwrap()];
 	let mut a: Vec<f64> = vec![0.0; NZ.try_into().unwrap()];
-	let mut x: Vec<f64> = vec![0.0; (NA+2).try_into().unwrap()];
+	//let mut x: Vec<f64> = vec![0.0; (NA+2).try_into().unwrap()];
+	let mut x: Vec<f64> = vec![1.0; (NA+2).try_into().unwrap()];
 	let mut z: Vec<f64> = vec![0.0; (NA+2).try_into().unwrap()];
 	let mut p: Vec<f64> = vec![0.0; (NA+2).try_into().unwrap()];
 	let mut q: Vec<f64> = vec![0.0; (NA+2).try_into().unwrap()];
@@ -92,15 +93,10 @@ fn main() {
 	let mut lastcol: i32 = 0;
 	let mut amult: f64 = 0.0;
 	let mut tran: f64 = 0.0;
-	let mut timeron: bool = false;
 	
-	let (mut i, mut j, mut k, mut it): (i32, i32, i32, i32);
-	let (mut zeta, mut norm_temp1, mut norm_temp2, mut t, mut mflops, mut tmax, mut zeta_verify_value, mut epsilon, err): (f64,f64,f64,f64,f64,f64,f64,f64,f64);
+	let (mut zeta, mut norm_temp1, mut norm_temp2, mut t, mflops, zeta_verify_value, epsilon, err): (f64,f64,f64,f64,f64,f64,f64,f64);
 	let mut rnorm: f64 = 0.0;
-	let mut verified: bool;
-
-	// usado somente nos timers
-	//let mut t_names: [[char; T_LAST]]Vec<Vec<char, T_LAST>>;
+	let verified: bool;
 
 	firstrow = 0;
 	lastrow = NA - 1;
@@ -137,6 +133,7 @@ fn main() {
 		}
 	}
 
+	/*
 	for i in 0..=NA {
 		x[i as usize] = 1.0;
 	}
@@ -146,15 +143,16 @@ fn main() {
 		r[j as usize] = 0.0;
 		p[j as usize] = 0.0;
 	}
+	*/
 	zeta = 0.0;
 
-	// untimed iteration to init everything
 	conj_grad(&mut colidx, &mut rowstr, &mut x, &mut z, &mut a, &mut p, &mut q, &mut r, &mut rnorm, &naa, &lastcol, &firstcol, &lastrow, &firstrow);
 
 	norm_temp1 = 0.0;
 	norm_temp2 = 0.0;
 
 	for j in 0..=(lastcol - firstcol) {
+		//let j = j as usize;
 		norm_temp1 = norm_temp1 + x[j as usize] * z[j as usize];
 		norm_temp2 = norm_temp2 + z[j as usize] * z[j as usize];
 	}
@@ -164,7 +162,6 @@ fn main() {
 		x[j as usize] = norm_temp2 * z[j as usize];
 	}
 
-	// starting vector to (1, 1, ..., 1)
 	for i in 0..=NA {
 		x[i as usize] = 1.0;
 	}
@@ -193,7 +190,7 @@ fn main() {
 			println!("\n   iteration           ||r||                 zeta");
 		}
 		println!("    {}       {}   {}", &it, &rnorm, &zeta);
-		// normalize z to obtain x
+		
 		for j in 0..=(lastcol - firstcol) {
 			x[j as usize] = norm_temp2 * z[j as usize];
 		}
@@ -202,7 +199,6 @@ fn main() {
 	t = bench_timer.elapsed().as_secs_f64();
 	println!(" Benchmark completed");
 
-	//epsilon = 1.0e-10;
 	epsilon = 0.0000000001;
 
 	err = (zeta - zeta_verify_value).abs() / zeta_verify_value;
@@ -231,8 +227,7 @@ fn main() {
 }
 
 fn conj_grad(colidx: &mut Vec<i32>, rowstr: &mut Vec<i32>, x: &mut Vec<f64>, z: &mut Vec<f64>, a: &mut Vec<f64>, p: &mut Vec<f64>, q: &mut Vec<f64>, r: &mut Vec<f64>, rnorm: &mut f64, naa: &i32, lastcol: &i32, firstcol: &i32, lastrow: &i32, firstrow: &i32) {
-	let (mut j, mut k): (i32, i32);
-	let (mut cgit, cgitmax): (i32, i32);
+	let cgitmax: i32;
 	let (mut d, mut sum, mut rho, mut rho0, mut alpha, mut beta): (f64, f64, f64, f64, f64, f64);
 
 	cgitmax = 25;
@@ -250,12 +245,11 @@ fn conj_grad(colidx: &mut Vec<i32>, rowstr: &mut Vec<i32>, x: &mut Vec<f64>, z: 
 		rho = rho + r[j as usize] * r[j as usize];
 	}
 
-	for cgit in 1..=cgitmax {
+	for _cgit in 1..=cgitmax {
 		for j in 0..=(*lastrow - *firstrow) {
 			sum = 0.0;
 
 			for k in rowstr[j as usize]..rowstr[(j + 1) as usize] {
-				//dbg!(a[k as usize]);
 				sum += a[k as usize] * p[colidx[k as usize] as usize];
 			}
 			q[j as usize] = sum;
@@ -278,13 +272,14 @@ fn conj_grad(colidx: &mut Vec<i32>, rowstr: &mut Vec<i32>, x: &mut Vec<f64>, z: 
 		}
 
 		for j in 0..=(*lastcol - *firstcol) {
-			rho = rho + r[j as usize] * r[j as usize];
+			let j = j as usize;
+			rho = rho + r[j] * r[j];
 		}
 
 		beta = rho / rho0;
 
 		for j in 0..=(*lastcol - *firstcol) {
-			p[j as usize] = r[j as usize] + beta * p[j as usize]
+			p[j as usize] = r[j as usize] + beta * p[j as usize];
 		}
 	}
 
@@ -303,7 +298,7 @@ fn conj_grad(colidx: &mut Vec<i32>, rowstr: &mut Vec<i32>, x: &mut Vec<f64>, z: 
 		d = x[j as usize] - r[j as usize];
 		sum = sum + d * d;
 	}
-	//dbg!(&sum);
+
 	*rnorm = sum.sqrt();
 }
 	
@@ -312,7 +307,7 @@ fn icnvrt(x: &f64, ipwr2: &i32) -> i32 {
 }
 
 fn makea(n: &mut i32, nz: &mut i32, a: &mut Vec<f64>, colidx: &mut Vec<i32>, rowstr: &mut Vec<i32>, firstrow: &i32, lastrow: &i32, firstcol: &i32, lastcol: &i32, arow: &mut Vec<i32>, acol: &mut Vec<i32>, aelt: &mut Vec<f64>, iv: &mut Vec<i32>, NONZER: &i32, SHIFT: &f64, tran: &mut f64, amult: &f64 ) {
-	let (mut iouter, mut ivelt, mut nzv, mut nn1): (i32, i32, i32, i32);
+	let (mut nzv, mut nn1): (i32, i32);
 	let mut ivc: Vec<i32> = vec![0; (*NONZER + 1).try_into().unwrap()];
 	let mut vc: Vec<f64> = vec![0.0; (*NONZER + 1).try_into().unwrap()];
 
@@ -329,13 +324,14 @@ fn makea(n: &mut i32, nz: &mut i32, a: &mut Vec<f64>, colidx: &mut Vec<i32>, row
 	for iouter in 0..*n {
 		nzv = *NONZER;
 		sprnvc(n, &mut nzv, &nn1, &mut vc, &mut ivc, tran, &amult);
-		vecset(n, &mut vc, &mut ivc, &mut nzv, iouter + 1, 0.5);
+		vecset(&mut vc, &mut ivc, &mut nzv, iouter + 1, 0.5);
 		arow[iouter as usize] = nzv;
 		for ivelt in 0..nzv {
 			acol[(iouter * (*NONZER + 1) + ivelt) as usize] = ivc[ivelt as usize] - 1;
 			aelt[(iouter * (*NONZER + 1) + ivelt) as usize] = vc[ivelt as usize];
 		}
 	}
+	//dbg!(&acol);
 
 	sparse(a, colidx, rowstr, n, nz, NONZER, arow, acol, aelt, firstrow, lastrow, iv, &SHIFT);
 }
@@ -343,7 +339,7 @@ fn makea(n: &mut i32, nz: &mut i32, a: &mut Vec<f64>, colidx: &mut Vec<i32>, row
 fn sparse(a: &mut Vec<f64>, colidx: &mut Vec<i32>, rowstr: &mut Vec<i32>, n: &mut i32, nz: &mut i32, nozer: & i32, arow: &mut Vec<i32>, acol: &mut Vec<i32>, aelt: &mut Vec<f64>, firstrow: &i32, lastrow: &i32, nzloc: &mut Vec<i32>, shift: &f64) {
 	let nrows: i32;
 
-	let (mut i, mut j, mut j1, mut j2, mut nza, mut kk, mut nzrow, mut jcol): (i32, i32, i32, i32, i32, i32, i32, i32);
+	let (mut local_j, mut j1, mut j2, mut kk, mut nza, mut jcol): (i32, i32, i32, i32, i32, i32);
 	let mut last_k: i32 = 0;
 	let (mut size, mut scale, ratio, mut va): (f64, f64, f64, f64);
 	let mut goto_40: bool;
@@ -356,9 +352,9 @@ fn sparse(a: &mut Vec<f64>, colidx: &mut Vec<i32>, rowstr: &mut Vec<i32>, n: &mu
 	for i in 0..(*n) {
 		for nza in 0..arow[i as usize] {
 			//j = acol[i as usize][nza as usize] + 1;
-			j = acol[(i * (*nozer + 1) + nza) as usize] + 1;
+			local_j = acol[(i * (*nozer + 1) + nza) as usize] + 1;
 			//j = acol[(i * (*nozer + 1) + nza) as usize];
-			rowstr[j as usize] = rowstr[j as usize] + arow[i as usize];
+			rowstr[local_j as usize] = rowstr[local_j as usize] + arow[i as usize];
 		}
 	}
 	
@@ -386,7 +382,8 @@ fn sparse(a: &mut Vec<f64>, colidx: &mut Vec<i32>, rowstr: &mut Vec<i32>, n: &mu
 	ratio = f64::powf(RCOND, 1.0 / (*n as f64));
 	for i in 0..(*n) {
 		for nza in 0..arow[i as usize] {
-			j = acol[(i * (*nozer + 1) + nza) as usize];
+			local_j = acol[(i * (*nozer + 1) + nza) as usize];
+			//dbg!(local_j);
 			
 			scale = size * aelt[(i * (*nozer + 1) + nza) as usize];
 
@@ -395,15 +392,16 @@ fn sparse(a: &mut Vec<f64>, colidx: &mut Vec<i32>, rowstr: &mut Vec<i32>, n: &mu
 				va = aelt[(i * (*nozer + 1) + nzrow) as usize] * scale;
 
 				//if (jcol == j) & (j == i) {
-				if (jcol == j) && (j == i) {
+				if (jcol == local_j) && (local_j == i) {
 					va = va + RCOND - shift;
 				}
 
 				goto_40 = false;
-				for k in rowstr[j as usize]..rowstr[(j + 1) as usize] {
+				for k in rowstr[local_j as usize]..rowstr[(local_j + 1) as usize] {
 					last_k = k;
+					//dbg!(local_j);
 					if colidx[k as usize] > jcol {
-						kk = rowstr[(j + 1) as usize] - 2;
+						kk = rowstr[(local_j + 1) as usize] - 2;
 						loop {
 							if kk < k {
 								break;
@@ -426,25 +424,23 @@ fn sparse(a: &mut Vec<f64>, colidx: &mut Vec<i32>, rowstr: &mut Vec<i32>, n: &mu
 						break;
 					}
 					else if colidx[k as usize] == jcol {
-						nzloc[j as usize] = nzloc[j as usize] + 1;
+						nzloc[local_j as usize] = nzloc[local_j as usize] + 1;
 						goto_40 = true;
 						break;
 					}
+					//dbg!(local_j);
 				}
 				if goto_40 == false {
 					println!("internal error in sparse: i = {}", &i);
 					std::process::exit(-1);
 				}
-				//dbg!(&k);
-				// pode ser um problema com o k tambem
+				
 				a[last_k as usize] = a[last_k as usize] + va;
-				//dbg!(a[k as usize]);
-				//dbg!(k);
 			}
 		}
 		size = size * ratio;
 	}
-	//dbg!(&a);
+	
 	for j in 1..nrows {
 		nzloc[j as usize] = nzloc[j as usize] + nzloc[(j - 1) as usize];
 	}
@@ -458,13 +454,9 @@ fn sparse(a: &mut Vec<f64>, colidx: &mut Vec<i32>, rowstr: &mut Vec<i32>, n: &mu
 		}
 		j2 = rowstr[(j + 1) as usize] - nzloc[j as usize];
 		nza = rowstr[j as usize];
-		//dbg!(&nza);
-		//dbg!(&a);
+
 		for k in j1..j2 {
-			// a partir daqui o a da ruim
-			//dbg!(a[nza as usize]);
 			a[k as usize] = a[nza as usize];
-			//dbg!(a[nza as usize]);
 			colidx[k as usize] = colidx[nza as usize];
 			nza = nza + 1;
 		}
@@ -473,20 +465,17 @@ fn sparse(a: &mut Vec<f64>, colidx: &mut Vec<i32>, rowstr: &mut Vec<i32>, n: &mu
 		rowstr[j as usize] = rowstr[j as usize] - nzloc[(j - 1) as usize];
 	}
 	nza = rowstr[nrows as usize] - 1;
-	//dbg!(&a);
 }
 
 fn sprnvc(n: &mut i32, nz: &mut i32, nn1: &i32, v: &mut Vec<f64>, iv: &mut Vec<i32>, tran: &mut f64, amult: &f64) {
-	let (mut nzv, mut ii, mut i): (i32, i32, i32);
+	let mut i: i32;
 	let (mut vecelt, mut vecloc): (f64, f64);
 	let mut was_gen: bool = false;
-	nzv = 0;
+	let mut nzv: i32 = 0;
 
-	loop {
-		if nzv >= *nz {
-			break;
-		}
-
+	// Não pode ser um for loop
+	// Verificar se da pra paralelizar
+	while nzv < *nz {
 		vecelt = randdp::randlc(tran, *amult);
 		vecloc = randdp::randlc(tran, *amult);
 		i = icnvrt(&vecloc, nn1) + 1;
@@ -511,8 +500,7 @@ fn sprnvc(n: &mut i32, nz: &mut i32, nn1: &i32, v: &mut Vec<f64>, iv: &mut Vec<i
 	}
 }
 
-fn vecset(n: &mut i32, v: &mut Vec<f64>, iv: &mut Vec<i32>, nzv: &mut i32, i: i32, val: f64) {
-	let mut k: i32;
+fn vecset(v: &mut Vec<f64>, iv: &mut Vec<i32>, nzv: &mut i32, i: i32, val: f64) {
 	let mut set: bool = false;
 
 	for k in 0..*nzv {
