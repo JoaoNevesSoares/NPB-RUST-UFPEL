@@ -7,15 +7,15 @@
 # DEFAULT KERNEL
 KERNEL=cg-pp
 # DEFAULT CLASS
-CLASS=S
+CLASS=
 # DEFAULT NUM_THREADS
 NUM_THREADS=8
 # DONT OVERWRITE THIS
 PARAMS_COMMAND=cargo +nightly run --bin setparams --release -- $(KERNEL) $(CLASS) $(NUM_THREADS)
 
-COMP_COMMAND=cargo +nightly rustc --bin $(KERNEL)-$(CLASS)
+COMP_COMMAND=cargo +nightly rustc --bin $(KERNEL)-$(CLASS) --release
 
-EXEC_COMMAND=cargo +nightly run --bin $(KERNEL)$(CLASS)
+EXEC_COMMAND=cargo +nightly run --bin $(KERNEL)-$(CLASS) --release -- $(NUM_THREADS)
 
 compile:
 	$(PARAMS_COMMAND)

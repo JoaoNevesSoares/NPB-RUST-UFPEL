@@ -1,5 +1,9 @@
 //NPB SET_PARAMS GLOBAL VARIABLES
-//const COMPILETIME: &str = "19 Feb 2023";
+const CLASS: &str= %% CLASS_NPB %%;
+const M: u32 = %% M %%;
+const MM: u32 = M - MK;
+const NN: u32 = 1 << MM;
+const COMPILETIME: &str = %% COMPILE_TIME %%;
 const NPBVERSION: &str = "4.1";
 const COMPILERVERSION: &str = "rustc 1.70.0-nightly";
 const LIBVERSION: &str = "1.0";
@@ -24,24 +28,6 @@ use chrono::{Local, DateTime};
 
 //BEGGINING OF EP
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    let CLASS: &str= &args[1];
-
-    let COMPILETIME: String = Local::now().to_rfc3339();
-
-    let M: u32 = match CLASS {
-        "S"=>24,
-        "W"=>25,
-        "A"=>28,
-        "B"=>30,
-        "C"=>32,
-        "D"=>36,
-        "E"=>40,
-        _=>24
-    };
-    let MM: u32 = M - MK;
-    let NN: u32 = 1 << MM;
-
     // Integer Variables
     let (mut ik, mut l, nit): (i32, usize, i32);
     let mut kk: i32;
@@ -210,7 +196,7 @@ fn main() {
                         "Random numbers generated",
                         verified,
                         NPBVERSION,
-                        COMPILETIME.as_str(),
+                        COMPILETIME,
                         COMPILERVERSION,
                         LIBVERSION,
                         "OMP_NUM_THREADS",

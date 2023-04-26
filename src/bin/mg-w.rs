@@ -8,20 +8,20 @@
 //----------PARAMS PASSED TO PROBLEM
 
 const NIT: usize = 4; // for class S
-const NX_DEFAULT: usize = 32;
-const NY_DEFAULT: usize = 32;
-const NZ_DEFAULT: usize = 32;
+const NX_DEFAULT: usize = 128;
+const NY_DEFAULT: usize = 128;
+const NZ_DEFAULT: usize = 128;
 const NIT_DEFAULT: usize = NIT;
-const LM: usize = ilog2(32) as usize;
+const LM: usize = ilog2(128) as usize;
 const LT_DEFAULT: usize = LM;
 const DEBUG_DEFAULT:usize = 0;
 const NDIM1: usize = LM;
-const NDIM2: usize = ilog2(32) as usize;
-const NDIM3: usize = ilog2(32) as usize;
+const NDIM2: usize = ilog2(128) as usize;
+const NDIM3: usize = ilog2(128) as usize;
 const ONE: usize = 1;
 
 const NPBVERSION: &str = "4.1.2";
-const COMPILETIME: &str = "2023-04-25T21:37:02.901383336-03:00";
+const COMPILETIME: &str = "2023-04-25T22:03:29.366908889-03:00";
 const COMPILERVERSION: &str = "rustc 1.70.0-nightly";
 const LIBVERSION: &str = "1";
 const CS1: &str = "";

@@ -6,16 +6,16 @@ use chrono::Local;
 use common::print_results;
 use common::randdp;
 
-const CLASS: &str = %% CLASS_NPB %%;
-const NA: i32 = %% NA %%;
-const NONZER: i32 = %% NONZER %%;
-const NITER: i32 = %% NITER %%;
-const SHIFT: f64 = %% SHIFT %%;
+const CLASS: &str = "s";
+const NA: i32 = 1400;
+const NONZER: i32 = 7;
+const NITER: i32 = 15;
+const SHIFT: f64 = 10.0;
 const NZ: i32 = NA * (NONZER + 1) * (NONZER + 1);
 const NAZ: i32 = NA * (NONZER + 1);
 
 const NPBVERSION: &str = "4.1.2";
-const COMPILETIME: &str = %% COMPILE_TIME %%; // date
+const COMPILETIME: &str = "2023-04-25T23:04:04.009740551-03:00"; // date
 const COMPILERVERSION: &str = "rustc 1.70.0-nightly";
 const LIBVERSION: &str = "1";
 const CS1: &str = "";

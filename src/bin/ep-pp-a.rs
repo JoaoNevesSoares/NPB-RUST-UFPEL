@@ -1,9 +1,9 @@
 //NPB SET_PARAMS GLOBAL VARIABLES
-const CLASS: &str= %% CLASS_NPB %%;
-const M: u32 = %% M %%;
+const CLASS: &str= "a";
+const M: u32 = 28;
 const MM: u32 = M - MK;
 const NN: u32 = 1 << MM;
-const COMPILETIME: &str = %% COMPILE_TIME %%;
+const COMPILETIME: &str = "2023-04-25T23:26:32.678227652-03:00";
 const NPBVERSION: &str = "4.1";
 const COMPILERVERSION: &str = "13.0.0";
 const LIBVERSION: &str = "1.0";
